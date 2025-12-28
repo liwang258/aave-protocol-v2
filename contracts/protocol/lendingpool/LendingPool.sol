@@ -111,7 +111,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     ValidationLogic.validateDeposit(reserve, amount);
     //aToken 地址
     address aToken = reserve.aTokenAddress;
-
+    //updateState 更新储备金的状态（例如，利率等）
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 

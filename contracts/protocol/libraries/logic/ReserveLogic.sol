@@ -193,11 +193,11 @@ library ReserveLogic {
   }
 
   /**
-   * @dev Updates the reserve current stable borrow rate, the current variable borrow rate and the current liquidity rate
-   * @param reserve The address of the reserve to be updated
-   * @param liquidityAdded The amount of liquidity added to the protocol (deposit or repay) in the previous action
-   * @param liquidityTaken The amount of liquidity taken from the protocol (redeem or borrow)
-   **/
+   * 更新当前资产的稳定借款利率指标、可变借款利率指标和流动性利率指标
+   * @param reserve 待更新的储备资产对象
+   * @param liquidityAdded 通过(添加抵押或还款方式)添加到协议的流动性数量
+   * @param liquidityTaken 通过（赎回或者借款方式）从协议中提取的流动性数量
+   * */
   function updateInterestRates(
     DataTypes.ReserveData storage reserve,
     address reserveAddress,
@@ -206,19 +206,21 @@ library ReserveLogic {
     uint256 liquidityTaken
   ) internal {
     UpdateInterestRatesLocalVars memory vars;
-
+    //稳定债务代币地址
     vars.stableDebtTokenAddress = reserve.stableDebtTokenAddress;
 
+    // 获取固定利率债务总量以及对应的平均利率
     (vars.totalStableDebt, vars.avgStableRate) = IStableDebtToken(vars.stableDebtTokenAddress)
       .getTotalSupplyAndAvgRate();
 
     //calculates the total variable debt locally using the scaled total supply instead
     //of totalSupply(), as it's noticeably cheaper. Also, the index has been
     //updated by the previous updateState() call
+    //获取当前的总可变债务
     vars.totalVariableDebt = IVariableDebtToken(reserve.variableDebtTokenAddress)
       .scaledTotalSupply()
       .rayMul(reserve.variableBorrowIndex);
-
+    //根据存款合约地址、流动性的增加和减少、总稳定债务、总可变债务、平均稳定利率和储备资产的储备因子计算新的利率
     (
       vars.newLiquidityRate,
       vars.newStableRate,
