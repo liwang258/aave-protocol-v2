@@ -18,11 +18,10 @@ library MathUtils {
    * @return The interest rate linearly accumulated during the timeDelta, in ray
    **/
 
-  function calculateLinearInterest(uint256 rate, uint40 lastUpdateTimestamp)
-    internal
-    view
-    returns (uint256)
-  {
+  function calculateLinearInterest(
+    uint256 rate,
+    uint40 lastUpdateTimestamp
+  ) internal view returns (uint256) {
     //solium-disable-next-line
     uint256 timeDifference = block.timestamp.sub(uint256(lastUpdateTimestamp));
 
@@ -30,17 +29,19 @@ library MathUtils {
   }
 
   /**
-   * @dev Function to calculate the interest using a compounded interest rate formula
-   * To avoid expensive exponentiation, the calculation is performed using a binomial approximation:
+   * 目的是在给定年利率、上次更新时间戳和当前时间戳的情况下，返回一个累积利息因子
+   * @dev 使用复利公式计算利息的函数
+   * 为避免高昂的指数运算成本，计算采用二项式近似法:
    *
    *  (1+x)^n = 1+n*x+[n/2*(n-1)]*x^2+[n/6*(n-1)*(n-2)*x^3...
    *
-   * The approximation slightly underpays liquidity providers and undercharges borrowers, with the advantage of great gas cost reductions
-   * The whitepaper contains reference to the approximation and a table showing the margin of error per different time periods
+   * T这种近似法会使流动性提供者的收益略低，向借款人收取的费用也略少，但优点是能大幅降低燃气成本
+   * 白皮书包含了对该近似法的参考以及一个展示不同时间段误差幅度的表格
    *
-   * @param rate The interest rate, in ray
-   * @param lastUpdateTimestamp The timestamp of the last update of the interest
-   * @return The interest rate compounded during the timeDelta, in ray
+   * @param rate 年利率（单位：ray，1e27）
+   * @param lastUpdateTimestamp 上次更新指数的时间戳
+   * @param currentTimestamp 当前时间戳
+   * @return 一个以 ray 为单位的累积因子（例如 1.05e27 表示累积了 5% 的利息）
    **/
   function calculateCompoundedInterest(
     uint256 rate,
@@ -74,11 +75,10 @@ library MathUtils {
    * @param rate The interest rate (in ray)
    * @param lastUpdateTimestamp The timestamp from which the interest accumulation needs to be calculated
    **/
-  function calculateCompoundedInterest(uint256 rate, uint40 lastUpdateTimestamp)
-    internal
-    view
-    returns (uint256)
-  {
+  function calculateCompoundedInterest(
+    uint256 rate,
+    uint40 lastUpdateTimestamp
+  ) internal view returns (uint256) {
     return calculateCompoundedInterest(rate, lastUpdateTimestamp, block.timestamp);
   }
 }
