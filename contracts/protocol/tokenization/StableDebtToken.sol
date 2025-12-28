@@ -20,13 +20,13 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
 
   uint256 public constant DEBT_TOKEN_REVISION = 0x1;
 
-  uint256 internal _avgStableRate;
+  uint256 internal _avgStableRate; //平均借款利率
   mapping(address => uint40) internal _timestamps;
-  mapping(address => uint256) internal _usersStableRate;
-  uint40 internal _totalSupplyTimestamp;
+  mapping(address => uint256) internal _usersStableRate; //用户借款利率（加权平均后的利率）
+  uint40 internal _totalSupplyTimestamp; //上一次更新债务总量的时间戳
 
-  ILendingPool internal _pool;
-  address internal _underlyingAsset;
+  ILendingPool internal _pool; //借款合约地址
+  address internal _underlyingAsset; //用户借出的代币类型
   IAaveIncentivesController internal _incentivesController;
 
   /**
@@ -109,8 +109,10 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     if (accountBalance == 0) {
       return 0;
     }
-    uint256 cumulatedInterest =
-      MathUtils.calculateCompoundedInterest(stableRate, _timestamps[account]);
+    uint256 cumulatedInterest = MathUtils.calculateCompoundedInterest(
+      stableRate,
+      _timestamps[account]
+    );
     return accountBalance.rayMul(cumulatedInterest);
   }
 
@@ -137,7 +139,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     address user,
     address onBehalfOf,
     uint256 amount,
-    uint256 rate
+    uint256 rate //借款利率
   ) external override onlyLendingPool returns (bool) {
     MintLocalVars memory vars;
 
@@ -152,7 +154,8 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     vars.nextSupply = _totalSupply = vars.previousSupply.add(amount);
 
     vars.amountInRay = amount.wadToRay();
-
+    //用户新的借款加权平均利率=（原来的借款加权平均利率*当前的欠款余额+新增的欠款*新利率）/(原来的欠款+新增欠款)
+    //注意:usersStableRate[onBehalfOf] 存的实际上是一个加权平均利率，有点类型存款中的index一样
     vars.newStableRate = _usersStableRate[onBehalfOf]
       .rayMul(currentBalance.wadToRay())
       .add(vars.amountInRay.rayMul(rate))
@@ -165,6 +168,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
     _totalSupplyTimestamp = _timestamps[onBehalfOf] = uint40(block.timestamp);
 
     // Calculates the updated average stable rate
+    // 全局平均加权借款利率
     vars.currentAvgStableRate = _avgStableRate = vars
       .currentAvgStableRate
       .rayMul(vars.previousSupply.wadToRay())
@@ -261,15 +265,9 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @param user The address of the user for which the interest is being accumulated
    * @return The previous principal balance, the new principal balance and the balance increase
    **/
-  function _calculateBalanceIncrease(address user)
-    internal
-    view
-    returns (
-      uint256,
-      uint256,
-      uint256
-    )
-  {
+  function _calculateBalanceIncrease(
+    address user
+  ) internal view returns (uint256, uint256, uint256) {
     uint256 previousPrincipalBalance = super.balanceOf(user);
 
     if (previousPrincipalBalance == 0) {
@@ -287,19 +285,10 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
   }
 
   /**
-   * @dev Returns the principal and total supply, the average borrow rate and the last supply update timestamp
+   * 获取供应数据
+   * 返回 原始债务数量（不含利息），总债务数量(包含利息)，平均借款利率，上一次更新时间
    **/
-  function getSupplyData()
-    public
-    view
-    override
-    returns (
-      uint256,
-      uint256,
-      uint256,
-      uint40
-    )
-  {
+  function getSupplyData() public view override returns (uint256, uint256, uint256, uint40) {
     uint256 avgRate = _avgStableRate;
     return (super.totalSupply(), _calcTotalSupply(avgRate), avgRate, _totalSupplyTimestamp);
   }
@@ -378,20 +367,23 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
   }
 
   /**
-   * @dev Calculates the total supply
-   * @param avgRate The average rate at which the total supply increases
-   * @return The debt balance of the user since the last burn/mint action
+   * @dev 计算总债务
+   * @param avgRate 平均利率
+   * @return 计算用户的债务总额
    **/
   function _calcTotalSupply(uint256 avgRate) internal view virtual returns (uint256) {
+    //原始债务总量(不包含利息)
     uint256 principalSupply = super.totalSupply();
 
     if (principalSupply == 0) {
       return 0;
     }
-
-    uint256 cumulatedInterest =
-      MathUtils.calculateCompoundedInterest(avgRate, _totalSupplyTimestamp);
-
+    //计算固定利率累计量
+    uint256 cumulatedInterest = MathUtils.calculateCompoundedInterest(
+      avgRate,
+      _totalSupplyTimestamp
+    );
+    //最新总债务=初始债务量*累积量
     return principalSupply.rayMul(cumulatedInterest);
   }
 
@@ -401,11 +393,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @param amount The amount being minted
    * @param oldTotalSupply the total supply before the minting event
    **/
-  function _mint(
-    address account,
-    uint256 amount,
-    uint256 oldTotalSupply
-  ) internal {
+  function _mint(address account, uint256 amount, uint256 oldTotalSupply) internal {
     uint256 oldAccountBalance = _balances[account];
     _balances[account] = oldAccountBalance.add(amount);
 
@@ -420,11 +408,7 @@ contract StableDebtToken is IStableDebtToken, DebtTokenBase {
    * @param amount The amount being burned
    * @param oldTotalSupply The total supply before the burning event
    **/
-  function _burn(
-    address account,
-    uint256 amount,
-    uint256 oldTotalSupply
-  ) internal {
+  function _burn(address account, uint256 amount, uint256 oldTotalSupply) internal {
     uint256 oldAccountBalance = _balances[account];
     _balances[account] = oldAccountBalance.sub(amount, Errors.SDT_BURN_EXCEEDS_BALANCE);
 

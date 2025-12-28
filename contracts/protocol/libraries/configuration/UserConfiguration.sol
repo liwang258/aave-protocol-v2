@@ -31,6 +31,7 @@ library UserConfiguration {
   }
 
   /**
+   * 设置对应的资产是否可以作为抵押资产
    * @dev Sets if the user is using as collateral the reserve identified by reserveIndex
    * @param self The configuration object
    * @param reserveIndex The index of the reserve in the bitmap
@@ -42,6 +43,7 @@ library UserConfiguration {
     bool usingAsCollateral
   ) internal {
     require(reserveIndex < 128, Errors.UL_INVALID_INDEX);
+    //这里是位运算
     self.data =
       (self.data & ~(1 << (reserveIndex * 2 + 1))) |
       (uint256(usingAsCollateral ? 1 : 0) << (reserveIndex * 2 + 1));
@@ -50,7 +52,7 @@ library UserConfiguration {
   /**
    * @dev Used to validate if a user has been using the reserve for borrowing or as collateral
    * @param self The configuration object
-   * @param reserveIndex The index of the reserve in the bitmap
+   * @param reserveIndex 资产索引
    * @return True if the user has been using a reserve for borrowing or as collateral, false otherwise
    **/
   function isUsingAsCollateralOrBorrowing(
@@ -67,11 +69,10 @@ library UserConfiguration {
    * @param reserveIndex The index of the reserve in the bitmap
    * @return True if the user has been using a reserve for borrowing, false otherwise
    **/
-  function isBorrowing(DataTypes.UserConfigurationMap memory self, uint256 reserveIndex)
-    internal
-    pure
-    returns (bool)
-  {
+  function isBorrowing(
+    DataTypes.UserConfigurationMap memory self,
+    uint256 reserveIndex
+  ) internal pure returns (bool) {
     require(reserveIndex < 128, Errors.UL_INVALID_INDEX);
     return (self.data >> (reserveIndex * 2)) & 1 != 0;
   }
@@ -82,11 +83,10 @@ library UserConfiguration {
    * @param reserveIndex The index of the reserve in the bitmap
    * @return True if the user has been using a reserve as collateral, false otherwise
    **/
-  function isUsingAsCollateral(DataTypes.UserConfigurationMap memory self, uint256 reserveIndex)
-    internal
-    pure
-    returns (bool)
-  {
+  function isUsingAsCollateral(
+    DataTypes.UserConfigurationMap memory self,
+    uint256 reserveIndex
+  ) internal pure returns (bool) {
     require(reserveIndex < 128, Errors.UL_INVALID_INDEX);
     return (self.data >> (reserveIndex * 2 + 1)) & 1 != 0;
   }

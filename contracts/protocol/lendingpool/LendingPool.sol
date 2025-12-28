@@ -91,6 +91,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
+   * 存款逻辑
    * @dev 将一定数量的基础资产存入储备金，作为回报，会收到对应的 aToken
    * - 例如：用户存入 100 USDC，作为回报会得到 100 aUSDC
    * @param asset 要存入的基础资产的地址
@@ -111,15 +112,22 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     ValidationLogic.validateDeposit(reserve, amount);
     //aToken 地址
     address aToken = reserve.aTokenAddress;
-    //updateState 更新储备金的状态（例如，利率等）
+    //  1、更新浮动利率类型借款类型index
+    //  2、更新固定借款利率类型index
+    //  3、更新存款index
+    //  4、将利息的增量部分按照协议规定的比例 向国库 增发/销毁 相应数量的atoken
     reserve.updateState();
+    //更新利率信息
     reserve.updateInterestRates(asset, aToken, amount, 0);
-
+    //给用户发放amount数量的atoken 即用户存储多少数量的代币，则发放多少数量的atoken
     IERC20(asset).safeTransferFrom(msg.sender, aToken, amount);
-
+    //mint对应数量的atoken  实际存储进去的数量=amount/reserve.liquidityIndex
+    //最终用户查询的时候使用的是 scaledAmount*当时的liquidityIndex
+    //因为liquidityIndex在缓慢增长，所以用户看到的自己的token数量实际上再增长(即产生了利息)
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
     if (isFirstDeposit) {
+      //首次存款
       _usersConfig[onBehalfOf].setUsingAsCollateral(reserve.id, true);
       emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
     }
@@ -183,19 +191,19 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
+   * 借款
    * @dev Allows users to borrow a specific `amount` of the reserve underlying asset, provided that the borrower
    * already deposited enough collateral, or he was given enough allowance by a credit delegator on the
    * corresponding debt token (StableDebtToken or VariableDebtToken)
    * - E.g. User borrows 100 USDC passing as `onBehalfOf` his own address, receiving the 100 USDC in his wallet
    *   and 100 stable/variable debt tokens, depending on the `interestRateMode`
-   * @param asset The address of the underlying asset to borrow
-   * @param amount The amount to be borrowed
-   * @param interestRateMode The interest rate mode at which the user wants to borrow: 1 for Stable, 2 for Variable
+   * @param asset 需要借的资产
+   * @param amount 需要借的数量
+   * @param interestRateMode 利率模式: 1: 固定利率, 2:浮动利率
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
    *   0 if the action is executed directly by the user, without any middle-man
-   * @param onBehalfOf Address of the user who will receive the debt. Should be the address of the borrower itself
-   * calling the function if he wants to borrow against his own collateral, or the address of the credit delegator
-   * if he has been given credit delegation allowance
+   * @param onBehalfOf  将接收债务的用户地址。如果借款人想以自己的抵押品借款，该地址应为借款人本人调用函数时的地址；
+   * 如果借款人获得了信贷委托额度，则该地址应为信贷委托人的地址。
    **/
   function borrow(
     address asset,
@@ -598,11 +606,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     )
   {
     (
-      totalCollateralETH,
-      totalDebtETH,
-      ltv,
-      currentLiquidationThreshold,
-      healthFactor
+      totalCollateralETH, //总可抵押的ETH
+      totalDebtETH, //总ETH欠款
+      ltv, //LTV，货款价值
+      currentLiquidationThreshold, //当前流动性因子
+      healthFactor //健康因子
     ) = GenericLogic.calculateUserAccountData(
       user,
       _reserves,
@@ -858,15 +866,23 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _reservesCount,
       oracle
     );
-
+    /**
+     *  触发更新储备资产的状态指标
+     *  1、更新浮动利率类型借款类型index
+     *  2、更新固定借款利率类型index
+     *  3、更新存款index
+     *  4、将利息的增量部分按照协议规定的比例 向国库 增发/销毁 相应数量的atoken
+     * @param reserve 储备量对象
+     **/
     reserve.updateState();
 
     uint256 currentStableRate = 0;
 
     bool isFirstBorrowing = false;
     if (DataTypes.InterestRateMode(vars.interestRateMode) == DataTypes.InterestRateMode.STABLE) {
+      //当前的借款利率
       currentStableRate = reserve.currentStableBorrowRate;
-
+      //固定利率模式，mint对应的欠款代币给用户地址
       isFirstBorrowing = IStableDebtToken(reserve.stableDebtTokenAddress).mint(
         vars.user,
         vars.onBehalfOf,

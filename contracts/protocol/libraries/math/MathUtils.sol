@@ -12,10 +12,11 @@ library MathUtils {
   uint256 internal constant SECONDS_PER_YEAR = 365 days;
 
   /**
+   * 计算线性利息
    * @dev Function to calculate the interest accumulated using a linear interest rate formula
-   * @param rate The interest rate, in ray
-   * @param lastUpdateTimestamp The timestamp of the last update of the interest
-   * @return The interest rate linearly accumulated during the timeDelta, in ray
+   * @param rate 利率
+   * @param lastUpdateTimestamp 上一次利率计算时间
+   * @return 线性利率=1+当前利率*(时间差)/一年的秒数
    **/
 
   function calculateLinearInterest(
@@ -24,7 +25,7 @@ library MathUtils {
   ) internal view returns (uint256) {
     //solium-disable-next-line
     uint256 timeDifference = block.timestamp.sub(uint256(lastUpdateTimestamp));
-
+    //当前利率*时间差/一年的秒数+1e27
     return (rate.mul(timeDifference) / SECONDS_PER_YEAR).add(WadRayMath.ray());
   }
 

@@ -178,7 +178,8 @@ contract DefaultReserveInterestRateStrategy is IReserveInterestRateStrategy {
       .getMarketBorrowRate(reserve);
     // 资金利用率> 最优利用率
     if (vars.utilizationRate > OPTIMAL_UTILIZATION_RATE) {
-      // 计算超额利用率比例 = （资金利用率 - 最优利用率） / 超额利用率
+      // 计算超额利用率比例 = （资金利用率 - 最优利用率） /（1-最优利用率)
+      // EXCESS_UTILIZATION_RATE=1-最优利用率
       uint256 excessUtilizationRateRatio = vars
         .utilizationRate
         .sub(OPTIMAL_UTILIZATION_RATE)
