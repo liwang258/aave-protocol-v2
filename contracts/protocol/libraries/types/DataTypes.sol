@@ -8,7 +8,14 @@ library DataTypes {
     ReserveConfigurationMap configuration;
     //the liquidity index. Expressed in ray
     uint128 liquidityIndex;
-    //variable borrow index. Expressed in ray
+    /**
+     * 累计利息指数，用于计算可变利率债务的增长   用户最终还款额=归一化后的接口额度 * (当前可变借款指数 / 借款时的可变借款指数)
+     * 为什么要用除法？
+     * 这个设计用户任意时刻的还款金额=scaledBalanceAmount * (当前可变借款指数)
+     * 而: scaledBalanceAmount = 用户借款时的实际借款金额 / 借款时的可变借款指数
+     * 代入上式: 用户还款金额 = (用户借款时的实际借款金额 / 借款时的可变借款指数) * 当前可变借款指数
+     * 所以最终用户还款金额 = 用户借款时的实际借款金额 * (当前可变借款指数 / 借款时的可变借款指数)
+     */
     uint128 variableBorrowIndex;
     //the current supply rate. Expressed in ray
     uint128 currentLiquidityRate;
@@ -45,5 +52,9 @@ library DataTypes {
     uint256 data;
   }
 
-  enum InterestRateMode {NONE, STABLE, VARIABLE}
+  enum InterestRateMode {
+    NONE,
+    STABLE,
+    VARIABLE
+  }
 }
