@@ -421,15 +421,16 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
+   * 对用户资产进行清算(一般是清算者调用)，针对的是健康因子＜1的用户
    * @dev Function to liquidate a non-healthy position collateral-wise, with Health Factor below 1
    * - The caller (liquidator) covers `debtToCover` amount of debt of the user getting liquidated, and receives
    *   a proportionally amount of the `collateralAsset` plus a bonus to cover market risk
-   * @param collateralAsset The address of the underlying asset used as collateral, to receive as result of the liquidation
-   * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
-   * @param user The address of the borrower getting liquidated
-   * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
-   * @param receiveAToken `true` if the liquidators wants to receive the collateral aTokens, `false` if he wants
-   * to receive the underlying collateral asset directly
+   * @param collateralAsset 用户的抵押资产，清算者清算后获得的是这种资产
+   * @param debtAsset 清算者协助归还的资产类型
+   * @param user 被清算的用户
+   * @param debtToCover 清算者协助归还的欠款数量
+   * @param receiveAToken `true` :清算者获得对应数量的atoken, `false`:获得对应的抵押资产
+   * 
    **/
   function liquidationCall(
     address collateralAsset,
