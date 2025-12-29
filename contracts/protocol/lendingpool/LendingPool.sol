@@ -298,6 +298,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
+   * 允许借款人调整自己的利率计算模式  比起浮动利率转固定利率   固定利率转浮动利率
    * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
    * @param asset The address of the underlying asset borrowed
    * @param rateMode The rate mode that the user wants to swap to
@@ -347,6 +348,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
+   * 存款快被借完了(使用率＞95%) 固定利率低于一定值后，管理员可以将用户的固定利率调整成最新利率
    * @dev Rebalances the stable interest rate of a user to the current stable rate defined on the reserve.
    * - Users can be rebalanced if the following conditions are satisfied:
    *     1. Usage ratio is above 95%
