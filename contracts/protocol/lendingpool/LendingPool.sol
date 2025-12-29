@@ -473,7 +473,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
-   * @dev Allows smartcontracts to access the liquidity of the pool within one transaction,
+   * @dev 闪电贷(只能通过合约来调用)
    * as long as the amount taken plus a fee is returned.
    * IMPORTANT There are security concerns for developers of flashloan receiver contracts that must be kept into consideration.
    * For further details please visit https://developers.aave.com
@@ -501,20 +501,21 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     FlashLoanLocalVars memory vars;
 
     ValidationLogic.validateFlashloan(assets, amounts);
-
+    // 初始化aToken地址数组（对应借贷资产的aToken）
     address[] memory aTokenAddresses = new address[](assets.length);
+    // 利息溢价数组
     uint256[] memory premiums = new uint256[](assets.length);
-
+    // 定义闪电贷接收方（需实现指定接口）
     vars.receiver = IFlashLoanReceiver(receiverAddress);
 
     for (vars.i = 0; vars.i < assets.length; vars.i++) {
       aTokenAddresses[vars.i] = _reserves[assets[vars.i]].aTokenAddress;
-
+      // 计算闪电贷利息溢价：借款金额 × 总溢价比例 / 10000（_flashLoanPremiumTotal是协议固定值，比如50=0.5%）
       premiums[vars.i] = amounts[vars.i].mul(_flashLoanPremiumTotal).div(10000);
-
+      // 核心放款：把对应资产的底层资金，从aToken合约直接转给接收方（receiverAddress）
       IAToken(aTokenAddresses[vars.i]).transferUnderlyingTo(receiverAddress, amounts[vars.i]);
     }
-
+     // 借款方在这个方法中完成套利，归还贷款和利息   返回false则回滚   true则表示执行成功
     require(
       vars.receiver.executeOperation(assets, amounts, premiums, msg.sender, params),
       Errors.LP_INVALID_FLASH_LOAN_EXECUTOR_RETURN
@@ -528,24 +529,28 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       vars.currentAmountPlusPremium = vars.currentAmount.add(vars.currentPremium);
 
       if (DataTypes.InterestRateMode(modes[vars.i]) == DataTypes.InterestRateMode.NONE) {
+        // 更新各种累积因子，即上一次到现在产生了多少利息，更新存款,借款index,记录处理的时间戳
         _reserves[vars.currentAsset].updateState();
+        // 把闪电贷溢价计入储备池流动性，用于提升存款人收益
         _reserves[vars.currentAsset].cumulateToLiquidityIndex(
           IERC20(vars.currentATokenAddress).totalSupply(),
           vars.currentPremium
         );
+        // 更新存款，借款利率(含浮动和固定利率)   
         _reserves[vars.currentAsset].updateInterestRates(
           vars.currentAsset,
           vars.currentATokenAddress,
           vars.currentAmountPlusPremium,
           0
         );
-
+        // 核心：接收方把「本金+溢价」的底层资产，转回对应aToken合约，完成归还
         IERC20(vars.currentAsset).safeTransferFrom(
           receiverAddress,
           vars.currentATokenAddress,
           vars.currentAmountPlusPremium
         );
       } else {
+        //  用户不归还资金 选择直接转换成欠款，则需要走借款流程验证用户的健康因子，以及抵押品是否足够
         // If the user chose to not return the funds, the system checks if there is enough collateral and
         // eventually opens a debt position
         _executeBorrow(
