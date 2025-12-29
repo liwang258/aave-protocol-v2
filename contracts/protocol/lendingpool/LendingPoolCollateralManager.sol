@@ -68,6 +68,7 @@ contract LendingPoolCollateralManager is
   }
 
   /**
+   * 执行清算
    * @dev Function to liquidate a position if its Health Factor drops below 1
    * - The caller (liquidator) covers `debtToCover` amount of debt of the user getting liquidated, and receives
    *   a proportionally amount of the `collateralAsset` plus a bonus to cover market risk
@@ -118,15 +119,15 @@ contract LendingPoolCollateralManager is
     vars.collateralAtoken = IAToken(collateralReserve.aTokenAddress);
 
     vars.userCollateralBalance = vars.collateralAtoken.balanceOf(user);
-
+    // 最大允许被清算的债务=(固定利率债务+浮动利率债务)×比例(一般是50%)
     vars.maxLiquidatableDebt = vars.userStableDebt.add(vars.userVariableDebt).percentMul(
       LIQUIDATION_CLOSE_FACTOR_PERCENT
     );
-
+    // 计算实际能被清算的债务(不超过最大允许清算的资产)
     vars.actualDebtToLiquidate = debtToCover > vars.maxLiquidatableDebt
       ? vars.maxLiquidatableDebt
       : debtToCover;
-
+    //计算用户被清算的抵押品数量，清算者需要代还的资产数量
     (
       vars.maxCollateralToLiquidate,
       vars.debtAmountNeeded
@@ -159,7 +160,7 @@ contract LendingPoolCollateralManager is
         );
       }
     }
-
+    // 触发更新 借款利息，借款index  欠款额度等信息
     debtReserve.updateState();
 
     if (vars.userVariableDebt >= vars.actualDebtToLiquidate) {
@@ -170,19 +171,21 @@ contract LendingPoolCollateralManager is
       );
     } else {
       // If the user doesn't have variable debt, no need to try to burn variable debt tokens
-      if (vars.userVariableDebt > 0) {
+      if (vars.userVariableDebt > 0) {0
+        //有浮动利率债务，优先归还浮动利率债务
         IVariableDebtToken(debtReserve.variableDebtTokenAddress).burn(
           user,
           vars.userVariableDebt,
           debtReserve.variableBorrowIndex
         );
       }
+      //减少用户固定利率债务
       IStableDebtToken(debtReserve.stableDebtTokenAddress).burn(
         user,
         vars.actualDebtToLiquidate.sub(vars.userVariableDebt)
       );
     }
-
+    //更新债务利率信息
     debtReserve.updateInterestRates(
       debtAsset,
       debtReserve.aTokenAddress,
@@ -255,7 +258,7 @@ contract LendingPoolCollateralManager is
   }
 
   /**
-   * @dev Calculates how much of a specific collateral can be liquidated, given
+   * 计算用户本次被清算的抵押品数量以及清算者需要带为偿还的数量
    * a certain amount of debt asset.
    * - This function needs to be called after all the checks to validate the liquidation have been performed,
    *   otherwise it might fail.
@@ -265,9 +268,8 @@ contract LendingPoolCollateralManager is
    * @param debtAsset The address of the underlying borrowed asset to be repaid with the liquidation
    * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
    * @param userCollateralBalance The collateral balance for the specific `collateralAsset` of the user being liquidated
-   * @return collateralAmount: The maximum amount that is possible to liquidate given all the liquidation constraints
-   *                           (user balance, close factor)
-   *         debtAmountNeeded: The amount to repay with the liquidation
+   * @return collateralAmount: 本次能清算的最大抵押品数量
+   *         debtAmountNeeded: 清算者协助清算的债务数量
    **/
   function _calculateAvailableCollateralToLiquidate(
     DataTypes.ReserveData storage collateralReserve,
@@ -282,26 +284,31 @@ contract LendingPoolCollateralManager is
     IPriceOracleGetter oracle = IPriceOracleGetter(_addressesProvider.getPriceOracle());
 
     AvailableCollateralToLiquidateLocalVars memory vars;
-
+    //抵押品资产汇率(转换成ETH)
     vars.collateralPrice = oracle.getAssetPrice(collateralAsset);
+    //债务资产对应汇率(转换成ETH)
     vars.debtAssetPrice = oracle.getAssetPrice(debtAsset);
-
+    // 清算奖励系数(大于1 比如清算奖励是5%则这里是1.05)，已经抵押资产小数位数
     (, , vars.liquidationBonus, vars.collateralDecimals, ) = collateralReserve
       .configuration
       .getParams();
+    //债务资产小数位数
     vars.debtAssetDecimals = debtReserve.configuration.getDecimals();
 
     // This is the maximum possible amount of the selected collateral that can be liquidated, given the
     // max amount of liquidatable debt
+    // 计算给定的还款数量情况下，计算抵押品最大能被清算的数量
     vars.maxAmountCollateralToLiquidate = vars
       .debtAssetPrice
       .mul(debtToCover)
       .mul(10**vars.collateralDecimals)
       .percentMul(vars.liquidationBonus)
       .div(vars.collateralPrice.mul(10**vars.debtAssetDecimals));
-
+     // 用户账户余额不足(无法支撑最大被清算数量)
     if (vars.maxAmountCollateralToLiquidate > userCollateralBalance) {
+      //被清算数量调整成用户所有抵押品数量
       collateralAmount = userCollateralBalance;
+      //反推清算者实际需要协助偿还的数量
       debtAmountNeeded = vars
         .collateralPrice
         .mul(collateralAmount)
@@ -309,6 +316,7 @@ contract LendingPoolCollateralManager is
         .div(vars.debtAssetPrice.mul(10**vars.collateralDecimals))
         .percentDiv(vars.liquidationBonus);
     } else {
+      //账户余额足够，直接按照最大清算数量进行清算
       collateralAmount = vars.maxAmountCollateralToLiquidate;
       debtAmountNeeded = debtToCover;
     }
