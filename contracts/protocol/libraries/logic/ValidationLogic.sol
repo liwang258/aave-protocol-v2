@@ -34,11 +34,12 @@ library ValidationLogic {
   uint256 public constant REBALANCE_UP_USAGE_RATIO_THRESHOLD = 0.95 * 1e27; //usage ratio of 95%
 
   /**
-   * @dev Validates a deposit action
-   * @param reserve The reserve object on which the user is depositing
-   * @param amount The amount to be deposited
+   * @dev 校验存储逻辑(amount>0 资产储备是active状态，且不是冻结状态)
+   * @param reserve 用户存款时的储备对象
+   * @param amount 存款金额
    */
   function validateDeposit(DataTypes.ReserveData storage reserve, uint256 amount) external view {
+    //获取资产储备对象中的状态标识符 是否有效 ，是否冻结
     (bool isActive, bool isFrozen, , ) = reserve.configuration.getFlags();
 
     require(amount != 0, Errors.VL_INVALID_AMOUNT);
@@ -312,8 +313,10 @@ library ValidationLogic {
     require(isActive, Errors.VL_NO_ACTIVE_RESERVE);
 
     //if the usage ratio is below 95%, no rebalances are needed
-    uint256 totalDebt =
-      stableDebtToken.totalSupply().add(variableDebtToken.totalSupply()).wadToRay();
+    uint256 totalDebt = stableDebtToken
+      .totalSupply()
+      .add(variableDebtToken.totalSupply())
+      .wadToRay();
     uint256 availableLiquidity = IERC20(reserveAddress).balanceOf(aTokenAddress).wadToRay();
     uint256 usageRatio = totalDebt == 0 ? 0 : totalDebt.rayDiv(availableLiquidity.add(totalDebt));
 
@@ -321,8 +324,9 @@ library ValidationLogic {
     //then we allow rebalancing of the stable rate positions.
 
     uint256 currentLiquidityRate = reserve.currentLiquidityRate;
-    uint256 maxVariableBorrowRate =
-      IReserveInterestRateStrategy(reserve.interestRateStrategyAddress).getMaxVariableBorrowRate();
+    uint256 maxVariableBorrowRate = IReserveInterestRateStrategy(
+      reserve.interestRateStrategyAddress
+    ).getMaxVariableBorrowRate();
 
     require(
       usageRatio >= REBALANCE_UP_USAGE_RATIO_THRESHOLD &&
@@ -413,9 +417,8 @@ library ValidationLogic {
       );
     }
 
-    bool isCollateralEnabled =
-      collateralReserve.configuration.getLiquidationThreshold() > 0 &&
-        userConfig.isUsingAsCollateral(collateralReserve.id);
+    bool isCollateralEnabled = collateralReserve.configuration.getLiquidationThreshold() > 0 &&
+      userConfig.isUsingAsCollateral(collateralReserve.id);
 
     //if collateral isn't enabled as collateral by user, it cannot be liquidated
     if (!isCollateralEnabled) {
@@ -451,15 +454,14 @@ library ValidationLogic {
     uint256 reservesCount,
     address oracle
   ) internal view {
-    (, , , , uint256 healthFactor) =
-      GenericLogic.calculateUserAccountData(
-        from,
-        reservesData,
-        userConfig,
-        reserves,
-        reservesCount,
-        oracle
-      );
+    (, , , , uint256 healthFactor) = GenericLogic.calculateUserAccountData(
+      from,
+      reservesData,
+      userConfig,
+      reserves,
+      reservesCount,
+      oracle
+    );
 
     require(
       healthFactor >= GenericLogic.HEALTH_FACTOR_LIQUIDATION_THRESHOLD,

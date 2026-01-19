@@ -27,20 +27,19 @@ import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
 
 /**
- * @title LendingPool contract
+ * @title LendingPool 合约
  * @dev Main point of interaction with an Aave protocol's market
  * - Users can:
- *   # Deposit
- *   # Withdraw
- *   # Borrow
- *   # Repay
- *   # Swap their loans between variable and stable rate
- *   # Enable/disable their deposits as collateral rebalance stable rate borrow positions
- *   # Liquidate positions
- *   # Execute Flash Loans
- * - To be covered by a proxy contract, owned by the LendingPoolAddressesProvider of the specific market
- * - All admin functions are callable by the LendingPoolConfigurator contract defined also in the
- *   LendingPoolAddressesProvider
+ *   # Deposit  存款
+ *   # Withdraw 提款
+ *   # Borrow 借款
+ *   # Repay 偿还借款
+ *   # Swap their loans between variable and stable rate 将借款从浮动利率换成固定利率或者固定利率换成浮动利率
+ *   # 启用/禁用 存款作为抵押品 默认是允许的
+ *   # Liquidate positions  清算头寸
+ *   # Execute Flash Loans  执行闪电贷
+ * - （本合约）由代理合约承载，且该代理合约归特定市场的 LendingPoolAddressesProvider 所有
+ * - 所有的admin函数全部都定义在LendingPoolAddressesProvider合约，并且只能由LendingPoolAddressesProvider合约调用
  * @author Aave
  **/
 contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage {
@@ -85,8 +84,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    **/
   function initialize(ILendingPoolAddressesProvider provider) public initializer {
     _addressesProvider = provider;
+    //固定利率借款总占比 即：固定利率的借款总额度不能超过总资金池的25%,防止流动性风险，即超过这个比例，aave将不允许使用固定利率借出该资产
+    //只能借浮动利率
     _maxStableRateBorrowSizePercent = 2500;
+    // 闪电贷的手续费率 如闪电贷1000W USDC 则手续费为 1000W*9/10000=9000USDC
     _flashLoanPremiumTotal = 9;
+    // 单个市场的储备数量上限  即：代币种数不超过这个数量
     _maxNumberOfReserves = 128;
   }
 
@@ -108,7 +111,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint16 referralCode
   ) external override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
-
+    // 校验存款逻辑 校验存储逻辑(amount>0 资产储备是active状态，且不是冻结状态)
     ValidationLogic.validateDeposit(reserve, amount);
     //aToken 地址
     address aToken = reserve.aTokenAddress;
@@ -136,14 +139,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
-   * @dev Withdraws an `amount` of underlying asset from the reserve, burning the equivalent aTokens owned
-   * E.g. User has 100 aUSDC, calls withdraw() and receives 100 USDC, burning the 100 aUSDC
-   * @param asset The address of the underlying asset to withdraw
-   * @param amount The underlying amount to be withdrawn
-   *   - Send the value type(uint256).max in order to withdraw the whole aToken balance
-   * @param to Address that will receive the underlying, same as msg.sender if the user
+   * 提款
+   * @dev 从储备量中提取 amount数量的底层资产,然后销毁用户拥有的相应数量的aToken
+   * 例如. 用户有100 aUSDC, 调用这个方法的时候将会获得100 USDC，并销毁掉用户拥有的100 aUSDC
+   * @param 待提取的资产合约地址
+   * @param amount 待提取的资产数量 传递(uint256).max的时候将会提取所有的aToken余额
+   * @param to  接收底层资产的地址，如果想要提取到自己的钱包，这个to地址就等于msg.sender, 获取提取到其它的钱包地址
    *   wants to receive it on his own wallet, or a different address if the beneficiary is a
-   *   different wallet
    * @return The final amount withdrawn
    **/
   function withdraw(
@@ -151,6 +153,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     address to
   ) external override whenNotPaused returns (uint256) {
+    // 资产储备量
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     address aToken = reserve.aTokenAddress;
@@ -430,7 +433,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param user 被清算的用户
    * @param debtToCover 清算者协助归还的欠款数量
    * @param receiveAToken `true` :清算者获得对应数量的atoken, `false`:获得对应的抵押资产
-   * 
+   *
    **/
   function liquidationCall(
     address collateralAsset,
@@ -515,7 +518,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       // 核心放款：把对应资产的底层资金，从aToken合约直接转给接收方（receiverAddress）
       IAToken(aTokenAddresses[vars.i]).transferUnderlyingTo(receiverAddress, amounts[vars.i]);
     }
-     // 借款方在这个方法中完成套利，归还贷款和利息   返回false则回滚   true则表示执行成功
+    // 借款方在这个方法中完成套利，归还贷款和利息   返回false则回滚   true则表示执行成功
     require(
       vars.receiver.executeOperation(assets, amounts, premiums, msg.sender, params),
       Errors.LP_INVALID_FLASH_LOAN_EXECUTOR_RETURN
@@ -536,7 +539,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
           IERC20(vars.currentATokenAddress).totalSupply(),
           vars.currentPremium
         );
-        // 更新存款，借款利率(含浮动和固定利率)   
+        // 更新存款，借款利率(含浮动和固定利率)
         _reserves[vars.currentAsset].updateInterestRates(
           vars.currentAsset,
           vars.currentATokenAddress,

@@ -11,7 +11,7 @@ contract LendingPoolStorage {
   using ReserveLogic for DataTypes.ReserveData;
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
   using UserConfiguration for DataTypes.UserConfigurationMap;
-
+  //管理合约地址
   ILendingPoolAddressesProvider internal _addressesProvider;
 
   mapping(address => DataTypes.ReserveData) internal _reserves;

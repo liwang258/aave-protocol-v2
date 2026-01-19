@@ -114,6 +114,7 @@ library ReserveLogic {
   function updateState(DataTypes.ReserveData storage reserve) internal {
     //从储备资产的 variableDebtTokenAddress 地址（可变利率债务代币的地址）调用 scaledTotalSupply() 方法
     //scaledTotalSupply() 返回的是 按比例缩放的总可变债务（不是实际的代币数量，而是用于计算累积利息的内部数值）
+    // 等于 总浮动利率债务/浮动利率指数
     uint256 scaledVariableDebt = IVariableDebtToken(reserve.variableDebtTokenAddress)
       .scaledTotalSupply();
     // 记录前一个浮动借款索引
@@ -354,6 +355,7 @@ library ReserveLogic {
    * @param scaledVariableDebt 归一化后的浮动利率借款
    * @param liquidityIndex 上一次存款index
    * @param variableBorrowIndex 上一次浮动利率借款index
+   * @param timestamp 上一次更新索引的时间戳
    * @return 更新后的存款index，更新后的浮动利率借款index
    **/
   function _updateIndexes(

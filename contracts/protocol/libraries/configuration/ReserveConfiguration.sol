@@ -61,10 +61,10 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @param threshold The new liquidation threshold
    **/
-  function setLiquidationThreshold(DataTypes.ReserveConfigurationMap memory self, uint256 threshold)
-    internal
-    pure
-  {
+  function setLiquidationThreshold(
+    DataTypes.ReserveConfigurationMap memory self,
+    uint256 threshold
+  ) internal pure {
     require(threshold <= MAX_VALID_LIQUIDATION_THRESHOLD, Errors.RC_INVALID_LIQ_THRESHOLD);
 
     self.data =
@@ -77,11 +77,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The liquidation threshold
    **/
-  function getLiquidationThreshold(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (uint256)
-  {
+  function getLiquidationThreshold(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (uint256) {
     return (self.data & ~LIQUIDATION_THRESHOLD_MASK) >> LIQUIDATION_THRESHOLD_START_BIT_POSITION;
   }
 
@@ -90,10 +88,10 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @param bonus The new liquidation bonus
    **/
-  function setLiquidationBonus(DataTypes.ReserveConfigurationMap memory self, uint256 bonus)
-    internal
-    pure
-  {
+  function setLiquidationBonus(
+    DataTypes.ReserveConfigurationMap memory self,
+    uint256 bonus
+  ) internal pure {
     require(bonus <= MAX_VALID_LIQUIDATION_BONUS, Errors.RC_INVALID_LIQ_BONUS);
 
     self.data =
@@ -106,11 +104,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The liquidation bonus
    **/
-  function getLiquidationBonus(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (uint256)
-  {
+  function getLiquidationBonus(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (uint256) {
     return (self.data & ~LIQUIDATION_BONUS_MASK) >> LIQUIDATION_BONUS_START_BIT_POSITION;
   }
 
@@ -119,10 +115,10 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @param decimals The decimals
    **/
-  function setDecimals(DataTypes.ReserveConfigurationMap memory self, uint256 decimals)
-    internal
-    pure
-  {
+  function setDecimals(
+    DataTypes.ReserveConfigurationMap memory self,
+    uint256 decimals
+  ) internal pure {
     require(decimals <= MAX_VALID_DECIMALS, Errors.RC_INVALID_DECIMALS);
 
     self.data = (self.data & DECIMALS_MASK) | (decimals << RESERVE_DECIMALS_START_BIT_POSITION);
@@ -133,11 +129,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The decimals of the asset
    **/
-  function getDecimals(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (uint256)
-  {
+  function getDecimals(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (uint256) {
     return (self.data & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION;
   }
 
@@ -186,10 +180,10 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @param enabled True if the borrowing needs to be enabled, false otherwise
    **/
-  function setBorrowingEnabled(DataTypes.ReserveConfigurationMap memory self, bool enabled)
-    internal
-    pure
-  {
+  function setBorrowingEnabled(
+    DataTypes.ReserveConfigurationMap memory self,
+    bool enabled
+  ) internal pure {
     self.data =
       (self.data & BORROWING_MASK) |
       (uint256(enabled ? 1 : 0) << BORROWING_ENABLED_START_BIT_POSITION);
@@ -200,11 +194,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The borrowing state
    **/
-  function getBorrowingEnabled(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (bool)
-  {
+  function getBorrowingEnabled(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (bool) {
     return (self.data & ~BORROWING_MASK) != 0;
   }
 
@@ -227,11 +219,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The stable rate borrowing state
    **/
-  function getStableRateBorrowingEnabled(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (bool)
-  {
+  function getStableRateBorrowingEnabled(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (bool) {
     return (self.data & ~STABLE_BORROWING_MASK) != 0;
   }
 
@@ -240,10 +230,10 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @param reserveFactor The reserve factor
    **/
-  function setReserveFactor(DataTypes.ReserveConfigurationMap memory self, uint256 reserveFactor)
-    internal
-    pure
-  {
+  function setReserveFactor(
+    DataTypes.ReserveConfigurationMap memory self,
+    uint256 reserveFactor
+  ) internal pure {
     require(reserveFactor <= MAX_VALID_RESERVE_FACTOR, Errors.RC_INVALID_RESERVE_FACTOR);
 
     self.data =
@@ -256,29 +246,20 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The reserve factor
    **/
-  function getReserveFactor(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (uint256)
-  {
+  function getReserveFactor(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (uint256) {
     return (self.data & ~RESERVE_FACTOR_MASK) >> RESERVE_FACTOR_START_BIT_POSITION;
   }
 
   /**
-   * @dev Gets the configuration flags of the reserve
-   * @param self The reserve configuration
-   * @return The state flags representing active, frozen, borrowing enabled, stableRateBorrowing enabled
+   * @dev 获取资产储备对象中的标识符
+   * @param self 储备资产配置
+   * @return The state flags representing active(有效状态), frozen(冻结状态), borrowing enabled(是否允许借款状态), stableRateBorrowing enabled (是否允许固定利率借款)
    **/
-  function getFlags(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (
-      bool,
-      bool,
-      bool,
-      bool
-    )
-  {
+  function getFlags(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (bool, bool, bool, bool) {
     uint256 dataLocal = self.data;
 
     return (
@@ -294,17 +275,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The state params representing ltv, liquidation threshold, liquidation bonus, the reserve decimals
    **/
-  function getParams(DataTypes.ReserveConfigurationMap storage self)
-    internal
-    view
-    returns (
-      uint256,
-      uint256,
-      uint256,
-      uint256,
-      uint256
-    )
-  {
+  function getParams(
+    DataTypes.ReserveConfigurationMap storage self
+  ) internal view returns (uint256, uint256, uint256, uint256, uint256) {
     uint256 dataLocal = self.data;
 
     return (
@@ -321,17 +294,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The state params representing ltv, liquidation threshold, liquidation bonus, the reserve decimals
    **/
-  function getParamsMemory(DataTypes.ReserveConfigurationMap memory self)
-    internal
-    pure
-    returns (
-      uint256,
-      uint256,
-      uint256,
-      uint256,
-      uint256
-    )
-  {
+  function getParamsMemory(
+    DataTypes.ReserveConfigurationMap memory self
+  ) internal pure returns (uint256, uint256, uint256, uint256, uint256) {
     return (
       self.data & ~LTV_MASK,
       (self.data & ~LIQUIDATION_THRESHOLD_MASK) >> LIQUIDATION_THRESHOLD_START_BIT_POSITION,
@@ -346,16 +311,9 @@ library ReserveConfiguration {
    * @param self The reserve configuration
    * @return The state flags representing active, frozen, borrowing enabled, stableRateBorrowing enabled
    **/
-  function getFlagsMemory(DataTypes.ReserveConfigurationMap memory self)
-    internal
-    pure
-    returns (
-      bool,
-      bool,
-      bool,
-      bool
-    )
-  {
+  function getFlagsMemory(
+    DataTypes.ReserveConfigurationMap memory self
+  ) internal pure returns (bool, bool, bool, bool) {
     return (
       (self.data & ~ACTIVE_MASK) != 0,
       (self.data & ~FROZEN_MASK) != 0,

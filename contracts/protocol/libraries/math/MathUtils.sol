@@ -72,9 +72,9 @@ library MathUtils {
   }
 
   /**
-   * @dev Calculates the compounded interest between the timestamp of the last update and the current block timestamp
-   * @param rate The interest rate (in ray)
-   * @param lastUpdateTimestamp The timestamp from which the interest accumulation needs to be calculated
+   * @dev 计算从上一次更新的时间戳到当前区块时间戳之间产生的复利
+   * @param rate 利率 (in ray)
+   * @param lastUpdateTimestamp 上一次更新的时间戳
    **/
   function calculateCompoundedInterest(
     uint256 rate,

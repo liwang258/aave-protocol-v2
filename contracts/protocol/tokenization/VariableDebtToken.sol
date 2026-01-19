@@ -9,17 +9,18 @@ import {ILendingPool} from '../../interfaces/ILendingPool.sol';
 import {IAaveIncentivesController} from '../../interfaces/IAaveIncentivesController.sol';
 
 /**
- * @title VariableDebtToken
- * @notice Implements a variable debt token to track the borrowing positions of users
- * at variable rate mode
+ * @title VariableDebtToken 浮动利率债务合约
+ * @notice 生成一个可变利率债务token 用来记录浮动利率模式下的用户借款头寸
+ *
  * @author Aave
  **/
 contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
   using WadRayMath for uint256;
 
   uint256 public constant DEBT_TOKEN_REVISION = 0x1;
-
+  //借贷池合约
   ILendingPool internal _pool;
+  //借贷的底层资产地址
   address internal _underlyingAsset;
   IAaveIncentivesController internal _incentivesController;
 
@@ -121,11 +122,7 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
    * @param amount The amount getting burned
    * @param index The variable debt index of the reserve
    **/
-  function burn(
-    address user,
-    uint256 amount,
-    uint256 index
-  ) external override onlyLendingPool {
+  function burn(address user, uint256 amount, uint256 index) external override onlyLendingPool {
     uint256 amountScaled = amount.rayDiv(index);
     require(amountScaled != 0, Errors.CT_INVALID_BURN_AMOUNT);
 
@@ -152,8 +149,8 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
   }
 
   /**
-   * @dev Returns the scaled total supply of the variable debt token. Represents sum(debt/index)
-   * @return the scaled total supply
+   * @dev 返回归一化后的浮动债务token总数量    即：债务总数/浮动债务利率指数
+   * @return 归一化后的浮动债务token总数量
    **/
   function scaledTotalSupply() public view virtual override returns (uint256) {
     return super.totalSupply();
@@ -165,12 +162,9 @@ contract VariableDebtToken is DebtTokenBase, IVariableDebtToken {
    * @return The principal balance of the user
    * @return The principal total supply
    **/
-  function getScaledUserBalanceAndSupply(address user)
-    external
-    view
-    override
-    returns (uint256, uint256)
-  {
+  function getScaledUserBalanceAndSupply(
+    address user
+  ) external view override returns (uint256, uint256) {
     return (super.balanceOf(user), super.totalSupply());
   }
 
