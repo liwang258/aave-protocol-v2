@@ -282,10 +282,10 @@ library ReserveLogic {
    *
    * @dev 根据特定资产的储备系数，将部分已偿还的利息作为铸币税存入储备国库。
    * @param reserve 资产对象
-   * @param scaledVariableDebt The current scaled total variable debt
-   * @param previousVariableBorrowIndex The variable borrow index before the last accumulation of the interest
+   * @param scaledVariableDebt 当前归一化后的总浮动利率债务
+   * @param previousVariableBorrowIndex 上一次浮动利率借款索性
    * @param newLiquidityIndex 新存款index
-   * @param newVariableBorrowIndex The variable borrow index after the last accumulation of the interest
+   * @param newVariableBorrowIndex 最新的浮动利率借款索引
    **/
   function _mintToTreasury(
     DataTypes.ReserveData storage reserve, //资产对象
@@ -320,7 +320,7 @@ library ReserveLogic {
     vars.currentVariableDebt = scaledVariableDebt.rayMul(newVariableBorrowIndex);
 
     //calculate the stable debt until the last timestamp update
-    //计算固定利率累计量到当前区块时间
+    //计算固定利率累计量到当前区块时间(固定借款利率类型的总借款利息)
     vars.cumulatedStableInterest = MathUtils.calculateCompoundedInterest(
       vars.avgStableRate,
       vars.stableSupplyUpdatedTimestamp,
