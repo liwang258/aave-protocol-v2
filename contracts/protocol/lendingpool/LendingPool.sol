@@ -27,7 +27,7 @@ import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
 
 /**
- * @title LendingPool 合约
+ * @title LendingPool 借贷池合约
  * @dev Main point of interaction with an Aave protocol's market
  * - Users can:
  *   # Deposit  存款
