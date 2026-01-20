@@ -296,7 +296,7 @@ library ReserveLogic {
     uint40 timestamp //目标时间戳，传入的是上一次更新储备量的时间戳
   ) internal {
     MintToTreasuryLocalVars memory vars;
-    //协议比例
+    //协议比例 一般是10% 不同的储备不一样
     vars.reserveFactor = reserve.configuration.getReserveFactor();
 
     if (vars.reserveFactor == 0) {
@@ -337,7 +337,7 @@ library ReserveLogic {
       .add(vars.currentStableDebt)
       .sub(vars.previousVariableDebt)
       .sub(vars.previousStableDebt);
-    // 债务利息中的vars.reserveFactor%作为atoken的增发量
+    // 债务利息中的vars.reserveFactor%  一般10%作为atoken的增发量
     vars.amountToMint = vars.totalDebtAccrued.percentMul(vars.reserveFactor);
 
     if (vars.amountToMint != 0) {
