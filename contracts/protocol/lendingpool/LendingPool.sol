@@ -118,7 +118,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     //  1、更新浮动利率类型借款类型index
     //  2、更新固定借款利率类型index
     //  3、更新存款index
-    //  4、将利息的增量部分按照协议规定的比例 向国库 增发/销毁 相应数量的atoken
+    //  4、将利息的增量部分按照协议规定的比例一般是10% 向国库 增发/销毁 相应数量的atoken
     reserve.updateState();
     //更新利率信息
     reserve.updateInterestRates(asset, aToken, amount, 0);
@@ -130,7 +130,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
     if (isFirstDeposit) {
-      //首次存款
+      //首次存款 默认允许将存款作为抵押资产
       _usersConfig[onBehalfOf].setUsingAsCollateral(reserve.id, true);
       emit ReserveUsedAsCollateralEnabled(asset, onBehalfOf);
     }
