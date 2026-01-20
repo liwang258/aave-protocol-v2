@@ -12,8 +12,8 @@ import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 /**
  * @title 默认的资产利率计算合约
  * @notice Implements the calculation of the interest rates depending on the reserve state
- * @dev The model of interest rate is based on 2 slopes, one before the `OPTIMAL_UTILIZATION_RATE`
- * point of utilization and another from that one to 100%
+ * @dev 双斜率模型  资金低于最优利用率使用斜率1  高于最优使用率使用斜率2
+ *
  * - An instance of this same contract, can't be used across different Aave markets, due to the caching
  *   of the LendingPoolAddressesProvider
  * @author Aave
@@ -152,8 +152,8 @@ contract DefaultReserveInterestRateStrategy is IReserveInterestRateStrategy {
    * @param totalStableDebt 固定利率类型总借款量
    * @param totalVariableDebt 浮动利率类型总借款量
    * @param averageStableBorrowRate 所有固定利息债务的平均利率
-   * @param reserveFactor The reserve portion of the interest that goes to the treasury of the market
-   * @return The liquidity rate, the stable borrow rate and the variable borrow rate
+   * @param reserveFactor 储备因子一般10%，即预留给平台的比例
+   * @return 存款利率，固定借款利率，浮动借款利率
    **/
   function calculateInterestRates(
     address reserve,
@@ -164,7 +164,7 @@ contract DefaultReserveInterestRateStrategy is IReserveInterestRateStrategy {
     uint256 reserveFactor
   ) public view override returns (uint256, uint256, uint256) {
     CalcInterestRatesLocalVars memory vars;
-    //总债务 = 总稳定债务 + 总可变债务
+    //总债务 = 总固定利率债务 + 总浮动利率债务
     vars.totalDebt = totalStableDebt.add(totalVariableDebt);
     vars.currentVariableBorrowRate = 0;
     vars.currentStableBorrowRate = 0;
@@ -173,7 +173,7 @@ contract DefaultReserveInterestRateStrategy is IReserveInterestRateStrategy {
     vars.utilizationRate = vars.totalDebt == 0
       ? 0
       : vars.totalDebt.rayDiv(availableLiquidity.add(vars.totalDebt));
-    // 当前的稳定借款利率 = 从借贷利率预言机获取的市场借款利率 ---考虑预言机操纵风险
+    // 当前的固定借款利率 = 从借贷利率预言机获取的市场借款利率 ---考虑预言机操纵风险
     vars.currentStableBorrowRate = ILendingRateOracle(addressesProvider.getLendingRateOracle())
       .getMarketBorrowRate(reserve);
     // 资金利用率> 最优利用率
