@@ -10,7 +10,7 @@ import {ILendingRateOracle} from '../../interfaces/ILendingRateOracle.sol';
 import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
 /**
- * @title DefaultReserveInterestRateStrategy contract
+ * @title 默认的资产利率计算合约
  * @notice Implements the calculation of the interest rates depending on the reserve state
  * @dev The model of interest rate is based on 2 slopes, one before the `OPTIMAL_UTILIZATION_RATE`
  * point of utilization and another from that one to 100%
@@ -98,13 +98,13 @@ contract DefaultReserveInterestRateStrategy is IReserveInterestRateStrategy {
   }
 
   /**
-   * @dev Calculates the interest rates depending on the reserve's state and configurations
-   * @param reserve The address of the reserve
-   * @param liquidityAdded The liquidity added during the operation
-   * @param liquidityTaken The liquidity taken during the operation
-   * @param totalStableDebt The total borrowed from the reserve a stable rate
-   * @param totalVariableDebt The total borrowed from the reserve at a variable rate
-   * @param averageStableBorrowRate The weighted average of all the stable rate loans
+   * @dev 根据资产中的配置和状态计算利率
+   * @param reserve 资产地址
+   * @param liquidityAdded 当前操作新添加的流动性
+   * @param liquidityTaken 当前操纵产生的Atoken流动性
+   * @param totalStableDebt 总固定利率债务The total borrowed from the reserve a stable rate
+   * @param totalVariableDebt 总浮动利率债务The total borrowed from the reserve at a variable rate
+   * @param averageStableBorrowRate 固定利率平均利率The weighted average of all the stable rate loans
    * @param reserveFactor The reserve portion of the interest that goes to the treasury of the market
    * @return The liquidity rate, the stable borrow rate and the variable borrow rate
    **/
